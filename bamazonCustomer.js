@@ -3,7 +3,7 @@
 var mysql = require("mysql");
 
 var inquirer = require("inquirer");
-// require("console.table");
+require("console.table");
 
 var connection = mysql.createConnection({
     host: "localhost",
@@ -17,7 +17,7 @@ var connection = mysql.createConnection({
     database: "bamazonDB"
 });
 
-
+// Connects with the server and loads the product data
 connection.connect(function(err) {
     if (err) {
         console.error("error connecting:" + err.stack);
@@ -25,49 +25,101 @@ connection.connect(function(err) {
     displayProducts();
 });
 
+// This function will load products table from database and send results to the console.
 function displayProducts() {
+    // Selects the data from MySQL products table
     connection.query("SELECT * FROM products", function(err, res) {
         if (err) throw err;
+        // Logs the table into terminal
         console.table(res);
-        promptCustomer();
+        // Prompts customer for the product id
+        promptCustomerProduct(res);
 
     });
 }
 
-
-function promptCustomer(inventory) {
-
+    // Function to prompt customer for item_id
+function promptCustomerProduct(inventory) {
+    // Prompts user with message: "Which product would you like to buy?"
     inquirer.prompt([
 
         {
             type: "input",
             name: "choice",
-            message: "Which product would you like to buy?",
-            validat: function(val) {
+            message: "Which product would you like to buy?  [Quit with Q]",
+            validate: function(val) {
                 return !isNaN(val) || val.toLowerCase() == "q";
-            }            // name: "action",
-            // type: "list",
-            // message: "Which item number would you like to choose?",
-            // choices: [
-            //     "1", "2", "3", "4", "5", "6",
-            //     "7", "8", "9", "10", "11", "12"
-            
-            
+            }           
         }
-       
-        // After the prompt, store the user's response in a variable called location.
+             
     ])
-    
-//     .then(function (answer) {
-//         console.log(answer)
+        .then(function(val) {
+              // Check if user wants to quit program
+            checkIfUserQuit(val.choice);
+            var choiceId = parseInt(val.choice);
+            var product = checkInventory(choiceId, inventory);
+    // When user chooses product by item_id, prompt the customer for quantity
+            if (product) {
+     // Pass the chosen product to promptCustomerForQuantity
+                promptCustomerQuantity(product);
+            } else {
+            // else let the customer know the item is out of stock, reload displayProducts
+                console.log("\nThat item is out of stock!");
+                displayProducts();
+            }
+        });
+   }
 
-//     .then(function(answer) {
-//         switch (answer.action) {
-//             case "Find item by id":
-//             productSearch();
-//             break;
-//         }
-//     })
-// });
-       
-};
+   //Function to prompt customer for quantity
+   function promptCustomerQuantity(product) {
+       inquirer.prompt([
+           {
+               type: "input",
+               name: "quantity",
+               message: "How many would you like? [Quit with Q]",
+               validate: function(val) {
+                   return val > 0 || val.toLowerCase() === "q";
+               }
+           }
+       ])
+       .then(function(val) {
+           checkIfUserQuit(val.quantity);
+           var quantity = parseInt(val.quantity);
+
+        //If there is not enuogh product, let user know and re load displayProducts
+        if (quantity > product.stock_quantity) {
+            console.log("\nSorry out of stock on this one!");
+            displayProducts();
+        } else {
+            soldProduct(product, quantity);
+        }
+      });
+    }
+
+
+    function soldProduct(product, quantity) {
+        connection.query(
+            "UPDATE products SET stock_quantity = stock_quantity - ? WHERE item_id = ?",
+            [quantity, product.item_id],
+            function(err, res) {
+            console.log("\nYour purchase of " + quantity + " " + product.product_name + "'s was a success!  Enjoy your purchase!");
+            displayProducts();
+            }
+        );
+    }
+
+    function checkInventory(choiceId, inventory) {
+        for (var i = 0; i < inventory.length; i++) {
+            if (inventory[i].item_id === choiceId) {
+                return inventory[i];
+            }
+        }
+        return null;
+    }
+
+    function checkIfUserQuit(choice) {
+        if (choice.toLowerCase() === "q") {
+            console.log("Have a nice day!");
+            process.exit(0);
+        }
+    }
