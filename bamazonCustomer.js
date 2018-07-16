@@ -96,7 +96,7 @@ function promptCustomerProduct(inventory) {
       });
     }
 
-
+    // Function for after prompts and item purchase went through, gives user a message for a successful purchase
     function soldProduct(product, quantity) {
         connection.query(
             "UPDATE products SET stock_quantity = stock_quantity - ? WHERE item_id = ?",
@@ -107,7 +107,7 @@ function promptCustomerProduct(inventory) {
             }
         );
     }
-
+    // Function with for loop to check inventory and make sure there is enough stock for a purchase
     function checkInventory(choiceId, inventory) {
         for (var i = 0; i < inventory.length; i++) {
             if (inventory[i].item_id === choiceId) {
@@ -116,7 +116,7 @@ function promptCustomerProduct(inventory) {
         }
         return null;
     }
-
+    // Function if user quits to log "Have a nice day!"
     function checkIfUserQuit(choice) {
         if (choice.toLowerCase() === "q") {
             console.log("Have a nice day!");
